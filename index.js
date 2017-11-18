@@ -11,7 +11,6 @@ const program = require('commander')
 program
 	.version(require('./package.json').version)
 	.usage('[FILE]...')
-	.option('-t, --transparency-threshold <transparency>', 'Every color below specified threshold will automatically get background color', /^\d+$/, 200)
 	.option('-b, --background-color <bgColor>', 'Background color for transparent areas', /^\d+(,\d+){2}$/, '0,0,0')
 	.parse(process.argv)
 
@@ -20,7 +19,6 @@ if (!program.args.length) {
 }
 
 const invalidChars = /[^\w]/g
-const TRANSPARENCY_THRESHOLD = parseInt(program.transparencyThreshold)
 const bgColor = program.backgroundColor.split(',').map(x => parseInt(x))
 
 processImages()
@@ -60,11 +58,7 @@ function convertImage(filepath) {
 						const b = this.data[idx + 2]
 						const a = this.data[idx + 3]
 
-						if (a > TRANSPARENCY_THRESHOLD) {
-							row.push(rgb_to_hex565(r, g, b))
-						} else {
-							row.push(rgb_to_hex565(bgColor[0], bgColor[1], bgColor[2]))
-						}
+						row.push(convertColor(r, g, b, a))
 					}
 
 					output.write(row.join(','))
@@ -81,7 +75,16 @@ function convertImage(filepath) {
 	})
 }
 
+function convertColor(r, g, b, a) {
+	a = a / 255
+	r = Math.round((1 - a) * bgColor[0] + a * r)
+	g = Math.round((1 - a) * bgColor[1] + a * g)
+	b = Math.round((1 - a) * bgColor[2] + a * b)
+
+	return rgb565(r, g, b)
+}
+
 // Adafruit is using RGB565 https://learn.adafruit.com/adafruit-gfx-graphics-library/coordinate-system-and-units
-function rgb_to_hex565(r, g, b) {
+function rgb565(r, g, b) {
 	return '0x' + ((r / 255 * 31) << 11 | (g / 255 * 63) << 5 | (b / 255 * 31)).toString(16)
 }
