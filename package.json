@@ -1,0 +1,21 @@
+{
+  "name": "adafruit-icon",
+  "version": "1.0.0",
+  "description": "",
+  "bin": {
+	  "adafruit-icon": "index.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Ireneusz Patalas",
+  "license": "MIT",
+  "repository": {
+	  "type": "git",
+	  "url": "git+https://github.com/ipatalas/adafruit-icon.git"
+  },
+  "dependencies": {
+    "commander": "^2.11.0",
+    "pngjs": "^3.3.1"
+  }
+}
