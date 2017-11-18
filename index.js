@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-'use strict';
+'use strict'
 
 const fs = require('fs')
 const path = require('path')
@@ -8,19 +8,22 @@ const Stream = require('stream')
 const PNG = require('pngjs').PNG
 const program = require('commander')
 
-const invalidChars = /[^\w]/g
-const filepath = 'Twitter-icon.png'
-
 program
 	.version(require('./package.json').version)
 	.usage('[FILE]...')
-	.parse(process.argv);
+	.option('-t, --transparency-threshold <transparency>', 'Every color below specified threshold will automatically get background color', /^\d+$/, 200)
+	.option('-b, --background-color <bgColor>', 'Background color for transparent areas', /^\d+(,\d+){2}$/, '0,0,0')
+	.parse(process.argv)
 
 if (!program.args.length) {
-	return program.help();
+	return program.help()
 }
 
-processImages();
+const invalidChars = /[^\w]/g
+const TRANSPARENCY_THRESHOLD = parseInt(program.transparencyThreshold)
+const bgColor = program.backgroundColor.split(',').map(x => parseInt(x))
+
+processImages()
 
 async function processImages() {
 	try {
@@ -38,43 +41,43 @@ function convertImage(filepath) {
 	return new Promise((resolve, reject) => {
 		fs.createReadStream(filepath)
 			.on('error', reject)
-			.pipe(new PNG({
-				colorType: 2,
-				// TODO: add option to override bgColor from command line
-				bgColor: {
-					red: 0,
-					green: 0,
-					blue: 0
-				}
-			}))
+			.pipe(new PNG())
 			.on('error', reject)
 			.on('parsed', function () {
-				const output = fs.createWriteStream(`${imageName}.h`, { encoding: 'ascii' });
-				output.write('#include <pgmspace.h>\n\n');
-				output.write(`const uint16_t ${imageName}Width = ${this.width};\n`);
-				output.write(`const uint16_t ${imageName}Height = ${this.height};\n\n`);
-				output.write(`const unsigned short ${imageName}[${this.width * this.height}] PROGMEM = {\n`);
+				const output = fs.createWriteStream(`${imageName}.h`, { encoding: 'ascii' })
+				output.write('#include <pgmspace.h>\n\n')
+				output.write(`const uint16_t ${imageName}Width = ${this.width};\n`)
+				output.write(`const uint16_t ${imageName}Height = ${this.height};\n\n`)
+				output.write(`const unsigned short ${imageName}[${this.width * this.height}] PROGMEM = {\n`)
 
 				for (var y = 0; y < this.height; y++) {
-					const row = [];
+					const row = []
+
 					for (var x = 0; x < this.width; x++) {
-						const idx = (this.width * y + x) << 2;
-						const r = this.data[idx];
-						const g = this.data[idx + 1];
-						const b = this.data[idx + 2];
-						row.push(rgb_to_hex565(r, g, b));
+						const idx = (this.width * y + x) << 2
+						const r = this.data[idx]
+						const g = this.data[idx + 1]
+						const b = this.data[idx + 2]
+						const a = this.data[idx + 3]
+
+						if (a > TRANSPARENCY_THRESHOLD) {
+							row.push(rgb_to_hex565(r, g, b))
+						} else {
+							row.push(rgb_to_hex565(bgColor[0], bgColor[1], bgColor[2]))
+						}
 					}
-					output.write(row.join(','));
+
+					output.write(row.join(','))
 					if (y === this.height - 1) {
-						output.end('};');
+						output.end('};')
 					}
 					else {
-						output.write(',\n');
+						output.write(',\n')
 					}
 				}
 
-				resolve();
-			});
+				resolve()
+			})
 	})
 }
 
